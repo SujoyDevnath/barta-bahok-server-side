@@ -11,29 +11,67 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-const uri = `mongodb+srv://${DB_USER}:${DB_PASS}@cluster0.s8i5p.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.s8i5p.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 
 async function run() {
     try {
         await client.connect();
         const database = client.db("bartaBahok");
-        // const reviewsCollection = database.collection("reviews");
-        // const carsCollection = database.collection("cars");
-        // const allOrdersCollection = database.collection("allOrders");
-        // const usersCollection = database.collection("users");
-
+        const postsCollection = database.collection("posts");
+        
         ////////////////////////
         // USERS API HANDLING //
         //////////////////////
+        
+        // // GETTING CARS DATA
+        app.get('/posts', async (req, res) => {
+            const cursor = postsCollection.find({});
+            const posts = await cursor.toArray();
+            res.send(posts);
+        })
 
-        // // POSTING USER
-        // app.post('/users', async (req, res) => {
-        //     const user = req.body;
-        //     const result = await usersCollection.insertOne(user);
-        //     console.log(result);
-        //     res.json(result);
-        // });
+        // // POSTING POSTS
+        app.post('/posts', async (req, res) => {
+            const posts = req.body;
+            const result = await postsCollection.insertOne(posts);
+            console.log(result);
+            res.json(result);
+        });
+        // UPDATING LIKES IN POST
+        app.put('/posts/:id', async (req, res) => {
+            const id = req.params.id;
+            const updatedPost = req.body;
+            const updatedLike = updatedPost.updatedLike;
+            const updatedLikedPeoples = updatedPost.updatedLikedPeoples;
+            console.log(updatedPost.updatedLikedPeoples)
+            const filter = { _id: ObjectId(id) };
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: {
+                    like: updatedLike,
+                    likedPeople: updatedLikedPeoples
+                },
+            };
+            const result = await postsCollection.updateOne(filter, updateDoc, options)
+            res.json(result)
+        })
+        // UPDATING LIKED PEOPLES IN POST
+        // app.put('/posts/:id', async (req, res) => {
+        //     const id = req.params.id;
+        //     const updatedLikedPeoples = req.body;
+        //     console.log(updatedLikedPeoples)
+        //     // // const updatedLikedPeoples = updatedPost.updatedLike;
+        //     // const filter = { _id: ObjectId(id) };
+        //     // const options = { upsert: true };
+        //     // const updateDoc = {
+        //     //     $set: {
+        //     //         likedPeople: updatedLikedPeoples,
+        //     //     },
+        //     // };
+        //     // const result = await postsCollection.updateOne(filter, updateDoc, options)
+        //     // res.json(result)
+        // })
         // // CHECKING ADMIN
         // app.get('/users/:email', async (req, res) => {
         //     const email = req.params.email;
@@ -60,12 +98,6 @@ async function run() {
         // // CARS API HANDLING //
         // //////////////////////
 
-        // // GETTING CARS DATA
-        // app.get('/cars', async (req, res) => {
-        //     const cursor = carsCollection.find({});
-        //     const cars = await cursor.toArray();
-        //     res.send(cars);
-        // })
         // // GETTING SINGLE CAR DATA
         // app.get('/cars/:id', async (req, res) => {
         //     const id = req.params.id;
